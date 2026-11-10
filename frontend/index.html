@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AutoCV Agent | Adaptação de Currículo ATS &amp; Automação de Vagas</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand-group">
+        <div class="brand-badge" aria-hidden="true">CV</div>
+        <div>
+          <h1>AutoCV &amp; Freelance Agent</h1>
+          <p class="subtitle">Leitura de Currículo, Adaptação ATS com IA (Gemini) e Envio Semi-Automático 1-Clique</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <span id="ai-engine-pill" class="status-pill">Verificando IA...</span>
+        <button type="button" id="btn-open-settings" class="btn btn-secondary">
+          Configurar Gemini &amp; E-mail
+        </button>
+      </div>
+    </div>
+
+    <nav aria-label="Navegação principal do painel" class="tabs-nav">
+      <ul class="tabs-list">
+        <li>
+          <button type="button" class="tab-btn active" data-tab="tab-search" aria-current="page">
+            1. Buscar Vagas &amp; Serviços
+          </button>
+        </li>
+        <li>
+          <button type="button" class="tab-btn" data-tab="tab-tailor">
+            2. Adaptar Currículo para Vaga
+          </button>
+        </li>
+        <li>
+          <button type="button" class="tab-btn" data-tab="tab-queue">
+            3. Fila de Envio 1-Clique <span id="queue-badge" class="counter-badge">0</span>
+          </button>
+        </li>
+        <li>
+          <button type="button" class="tab-btn" data-tab="tab-profile">
+            4. Meu Currículo Base
+          </button>
+        </li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="app-main">
+    <!-- Barra de Métricas Rápidas -->
+    <section aria-label="Resumo de métricas do agente" class="metrics-grid">
+      <article class="metric-card">
+        <h2>Candidato Ativo</h2>
+        <p id="metric-candidate" class="metric-value">Carregando...</p>
+        <span id="metric-skills" class="metric-sub">0 competências mapeadas</span>
+      </article>
+      <article class="metric-card">
+        <h2>Vagas &amp; Serviços Compatíveis</h2>
+        <p id="metric-jobs" class="metric-value">0</p>
+        <span class="metric-sub">Empregos (CLT/PJ) &amp; Projetos Freelance</span>
+      </article>
+      <article class="metric-card highlight-card">
+        <h2>Aguardando Aprovação (1-Clique)</h2>
+        <p id="metric-pending" class="metric-value">0</p>
+        <span class="metric-sub">PDFs ATS + Propostas prontos para enviar</span>
+      </article>
+      <article class="metric-card">
+        <h2>Candidaturas Enviadas</h2>
+        <p id="metric-sent" class="metric-value">0</p>
+        <span class="metric-sub">Histórico de envios automatizados</span>
+      </article>
+    </section>
+
+    <!-- Região de anúncio acessível para feedback -->
+    <div id="toast-status" class="toast-banner" role="status" aria-live="polite" hidden></div>
+
+    <!-- ABA 1: BUSCAR VAGAS & SERVIÇOS FREELANCE -->
+    <section id="tab-search" class="tab-panel" aria-labelledby="heading-search">
+      <div class="section-header">
+        <div>
+          <h2 id="heading-search">Radar Inteligente de Vagas &amp; Projetos Freelance</h2>
+          <p class="section-desc">
+            O agente cruza as habilidades do seu currículo com portais de emprego (LinkedIn, Gupy, Indeed, Programathor) e plataformas de serviços (Workana, 99Freelas, Upwork).
+          </p>
+        </div>
+        <button type="button" id="btn-batch-prepare" class="btn btn-accent">
+          Auto-Preparar Pacote para Top 4 Vagas
+        </button>
+      </div>
+
+      <search class="search-box">
+        <form id="form-job-search" action="/api/jobs/search" method="POST" aria-labelledby="heading-search">
+          <div class="search-grid">
+            <div class="field">
+              <label for="search-query">Foco da busca (opcional - usa seu currículo se vazio)</label>
+              <input
+                type="search"
+                id="search-query"
+                name="custom_query"
+                placeholder="Ex: Desenvolvedor Python, Automação Web, React, API..."
+                autocorrect="off"
+                autocapitalize="none"
+                spellcheck="false"
+                enterkeyhint="search"
+              >
+            </div>
+
+            <div class="field">
+              <label for="search-modality">Modalidade preferida</label>
+              <input
+                type="text"
+                id="search-modality"
+                name="modality"
+                value="Remoto"
+                list="modality-options"
+              >
+              <datalist id="modality-options">
+                <option value="Remoto"></option>
+                <option value="Híbrido"></option>
+                <option value="Presencial"></option>
+                <option value="Remoto Internacional"></option>
+              </datalist>
+            </div>
+          </div>
+
+          <fieldset class="inline-fieldset">
+            <legend>Canais para varredura</legend>
+            <div class="checkbox-group">
+              <div class="check-item">
+                <input type="checkbox" id="chan-emprego" name="channels" value="Emprego" checked>
+                <label for="chan-emprego">Portais de Emprego (LinkedIn, Gupy, Indeed)</label>
+              </div>
+              <div class="check-item">
+                <input type="checkbox" id="chan-freelance" name="channels" value="Freelance" checked>
+                <label for="chan-freelance">Projetos &amp; Serviços Freelance (Workana, 99Freelas, Upwork)</label>
+              </div>
+              <div class="check-item">
+                <input type="checkbox" id="chan-email" name="channels" value="Email Direto" checked>
+                <label for="chan-email">Vagas com E-mail Direto</label>
+              </div>
+            </div>
+          </fieldset>
+
+          <div class="form-actions">
+            <button type="submit" id="btn-run-search" class="btn btn-primary">
+              Buscar Vagas &amp; Serviços para Meu Currículo
+            </button>
+          </div>
+        </form>
+      </search>
+
+      <p id="search-insights-banner" class="insights-box" hidden></p>
+
+      <div id="jobs-grid" class="cards-grid" aria-live="polite"></div>
+    </section>
+
+    <!-- ABA 2: ADAPTAR CURRÍCULO PARA VAGA ESPECÍFICA -->
+    <section id="tab-tailor" class="tab-panel" aria-labelledby="heading-tailor" hidden>
+      <div class="section-header">
+        <div>
+          <h2 id="heading-tailor">Adaptador de Currículo ATS &amp; Gerador de Proposta Sob Medida</h2>
+          <p class="section-desc">
+            Cole a descrição ou link de qualquer vaga/projeto. O agente calcula seu Score ATS, reescreve seu currículo destacando as palavras-chave exatas e gera o PDF pronto para aprovação.
+          </p>
+        </div>
+      </div>
+
+      <div class="two-col-layout">
+        <form id="form-tailor" action="/api/tailor" method="POST" class="card-panel" aria-labelledby="heading-tailor">
+          <div class="field">
+            <label for="tailor-title">Título da Vaga ou Projeto Freelance <span aria-hidden="true">*</span></label>
+            <input
+              type="text"
+              id="tailor-title"
+              name="job_title"
+              required
+              placeholder="Ex: Desenvolvedor Python Full-Stack / Automação de Dados"
+            >
+          </div>
+
+          <div class="search-grid">
+            <div class="field">
+              <label for="tailor-company">Empresa ou Cliente <span aria-hidden="true">*</span></label>
+              <input
+                type="text"
+                id="tailor-company"
+                name="company_or_client"
+                required
+                placeholder="Ex: Nubank / Cliente Workana"
+              >
+            </div>
+            <div class="field">
+              <label for="tailor-platform">Plataforma / Origem</label>
+              <input
+                type="text"
+                id="tailor-platform"
+                name="platform"
+                value="LinkedIn / Gupy"
+              >
+            </div>
+          </div>
+
+          <fieldset class="inline-fieldset">
+            <legend>Tipo de Oportunidade</legend>
+            <div class="checkbox-group">
+              <div class="check-item">
+                <input type="radio" id="type-emprego" name="channel" value="Emprego" checked>
+                <label for="type-emprego">Vaga de Emprego (CLT / PJ)</label>
+              </div>
+              <div class="check-item">
+                <input type="radio" id="type-freelance" name="channel" value="Freelance">
+                <label for="type-freelance">Serviço / Projeto Freelance</label>
+              </div>
+              <div class="check-item">
+                <input type="radio" id="type-email" name="channel" value="Email Direto">
+                <label for="type-email">Candidatura por E-mail Direto</label>
+              </div>
+            </div>
+          </fieldset>
+
+          <div class="search-grid">
+            <div class="field">
+              <label for="tailor-url">URL da Vaga / Projeto (opcional)</label>
+              <input
+                type="url"
+                id="tailor-url"
+                name="job_url"
+                placeholder="https://..."
+                autocorrect="off"
+                autocapitalize="none"
+                spellcheck="false"
+              >
+            </div>
+            <div class="field">
+              <label for="tailor-email">E-mail do Recrutador (opcional)</label>
+              <input
+                type="email"
+                id="tailor-email"
+                name="recruiter_email"
+                inputmode="email"
+                autocomplete="email"
+                autocorrect="off"
+                autocapitalize="none"
+                spellcheck="false"
+                placeholder="rh@empresa.com.br"
+              >
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="tailor-desc">Descrição Completa da Vaga ou Escopo do Serviço <span aria-hidden="true">*</span></label>
+            <textarea
+              id="tailor-desc"
+              name="job_description"
+              rows="7"
+              required
+              placeholder="Cole aqui os requisitos da vaga, tecnologias exigidas, responsabilidades ou a descrição do projeto freelance..."
+            ></textarea>
+          </div>
+
+          <button type="submit" id="btn-submit-tailor" class="btn btn-primary btn-full">
+            Analisar Vaga, Gerar Currículo PDF Adaptado &amp; Colocar na Fila
+          </button>
+        </form>
+
+        <!-- Painel de Resultado da Adaptação -->
+        <article id="tailor-result-panel" class="card-panel result-panel" aria-live="polite">
+          <h3>Resultado do Diagnóstico ATS &amp; Currículo Adaptado</h3>
+          <p class="empty-hint">
+            Preencha os dados da vaga ao lado e clique em analisar para ver seu Score ATS, palavras-chave encontradas/faltantes, carta de apresentação e baixar o PDF adaptado.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ABA 3: FILA DE APROVAÇÃO E ENVIO 1-CLIQUE -->
+    <section id="tab-queue" class="tab-panel" aria-labelledby="heading-queue" hidden>
+      <div class="section-header">
+        <div>
+          <h2 id="heading-queue">Central de Aprovação &amp; Automação de Envio (1-Clique)</h2>
+          <p class="section-desc">
+            Revise o PDF adaptado e a carta/proposta gerada pelo agente. Com 1 clique, envie por e-mail com anexo ou inicie o robô de navegador (Playwright) que preenche os campos para você.
+          </p>
+        </div>
+      </div>
+
+      <div id="applications-list" class="queue-list" aria-live="polite"></div>
+    </section>
+
+    <!-- ABA 4: MEU CURRÍCULO BASE -->
+    <section id="tab-profile" class="tab-panel" aria-labelledby="heading-profile" hidden>
+      <div class="section-header">
+        <div>
+          <h2 id="heading-profile">Meu Currículo Base (Fonte da Verdade do Agente)</h2>
+          <p class="section-desc">
+            Faça upload do seu currículo em PDF/TXT para extração automática via Gemini ou edite suas informações base abaixo.
+          </p>
+        </div>
+      </div>
+
+      <div class="two-col-layout">
+        <!-- Upload de PDF / Texto Bruto -->
+        <form id="form-upload-resume" action="/api/profile/upload" method="POST" enctype="multipart/form-data" class="card-panel" aria-labelledby="heading-upload-box">
+          <h3 id="heading-upload-box">Importar Currículo (PDF ou Texto)</h3>
+          <div class="field">
+            <label for="resume-file">Arquivo do seu currículo (.pdf ou .txt)</label>
+            <input type="file" id="resume-file" name="file" accept=".pdf,.txt,.md">
+            <span class="field-hint">O Gemini lê nativamente a estrutura visual e textual do seu PDF.</span>
+          </div>
+
+          <div class="field">
+            <label for="resume-raw-text">Ou cole o texto completo do seu currículo / LinkedIn</label>
+            <textarea
+              id="resume-raw-text"
+              name="raw_text"
+              rows="6"
+              placeholder="Cole aqui seu resumo, experiências, tecnologias e formação para o agente estruturar automaticamente..."
+            ></textarea>
+          </div>
+
+          <button type="submit" id="btn-upload-parse" class="btn btn-accent btn-full">
+            Extrair e Atualizar Meu Perfil com IA
+          </button>
+        </form>
+
+        <!-- Edição Estruturada do Perfil -->
+        <form id="form-edit-profile" action="/api/profile" method="POST" class="card-panel" aria-labelledby="heading-edit-box">
+          <h3 id="heading-edit-box">Dados Estruturados do Perfil</h3>
+
+          <div class="search-grid">
+            <div class="field">
+              <label for="prof-name">Nome Completo <span aria-hidden="true">*</span></label>
+              <input type="text" id="prof-name" name="full_name" autocomplete="name" required>
+            </div>
+            <div class="field">
+              <label for="prof-headline">Título Profissional Principal <span aria-hidden="true">*</span></label>
+              <input type="text" id="prof-headline" name="headline" required>
+            </div>
+          </div>
+
+          <div class="search-grid">
+            <div class="field">
+              <label for="prof-email">E-mail <span aria-hidden="true">*</span></label>
+              <input
+                type="email"
+                id="prof-email"
+                name="email"
+                inputmode="email"
+                autocomplete="email"
+                autocorrect="off"
+                autocapitalize="none"
+                spellcheck="false"
+                required
+              >
+            </div>
+            <div class="field">
+              <label for="prof-phone">Telefone / WhatsApp</label>
+              <input type="tel" id="prof-phone" name="phone" autocomplete="tel">
+            </div>
+          </div>
+
+          <div class="search-grid">
+            <div class="field">
+              <label for="prof-linkedin">URL do LinkedIn</label>
+              <input type="url" id="prof-linkedin" name="linkedin_url" autocorrect="off" autocapitalize="none" spellcheck="false">
+            </div>
+            <div class="field">
+              <label for="prof-github">GitHub / Portfólio</label>
+              <input type="url" id="prof-github" name="github_or_portfolio_url" autocorrect="off" autocapitalize="none" spellcheck="false">
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="prof-summary">Resumo Profissional Base</label>
+            <textarea id="prof-summary" name="summary" rows="3"></textarea>
+          </div>
+
+          <div class="field">
+            <label for="prof-skills">Habilidades Técnicas (Hard Skills separadas por vírgula)</label>
+            <textarea id="prof-skills" name="hard_skills_csv" rows="2"></textarea>
+          </div>
+
+          <div class="field">
+            <label for="prof-roles">Cargos e Serviços Alvo (separados por vírgula)</label>
+            <input type="text" id="prof-roles" name="preferred_roles_csv">
+          </div>
+
+          <button type="submit" id="btn-save-profile" class="btn btn-primary btn-full">
+            Salvar Alterações no Currículo Base
+          </button>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <p>AutoCV &amp; Freelance Agent — Otimização ATS com Google Gemini API &amp; Automação Assistida Playwright</p>
+  </footer>
+
+  <!-- MODAL NATIVO DE REVISÃO E APROVAÇÃO 1-CLIQUE (Light Dismiss closedby="any") -->
+  <dialog id="dialog-approve" closedby="any" aria-labelledby="dialog-approve-title">
+    <div class="dialog-header">
+      <h2 id="dialog-approve-title">Revisão Final &amp; Disparo com 1 Clique</h2>
+      <form method="dialog">
+        <button type="submit" value="cancel" class="btn-icon" aria-label="Fechar janela de aprovação">✕</button>
+      </form>
+    </div>
+
+    <form id="form-approve-send" method="POST" class="dialog-body">
+      <input type="hidden" id="approve-app-id" name="app_id">
+
+      <div class="approve-meta">
+        <span id="approve-job-badge" class="tag-badge">Vaga</span>
+        <a id="approve-pdf-link" href="#" target="_blank" rel="noopener" class="pdf-preview-link">
+          Abrir Currículo PDF Adaptado (Padrão ATS)
+        </a>
+      </div>
+
+      <fieldset class="inline-fieldset">
+        <legend>Como deseja executar o envio agora?</legend>
+        <div class="checkbox-group">
+          <div class="check-item">
+            <input type="radio" id="method-browser" name="delivery_method" value="browser_assist" checked>
+            <label for="method-browser">Robô de Navegador (Abre a vaga, preenche dados/proposta e anexa PDF)</label>
+          </div>
+          <div class="check-item">
+            <input type="radio" id="method-email" name="delivery_method" value="email">
+            <label for="method-email">Enviar E-mail Direto com PDF em Anexo (SMTP)</label>
+          </div>
+          <div class="check-item">
+            <input type="radio" id="method-manual" name="delivery_method" value="manual_mark">
+            <label for="method-manual">Apenas copiar proposta e marcar como enviado</label>
+          </div>
+        </div>
+      </fieldset>
+
+      <div class="search-grid">
+        <div class="field">
+          <label for="approve-url">URL da Vaga / Projeto</label>
+          <input type="url" id="approve-url" name="apply_url" autocorrect="off" autocapitalize="none" spellcheck="false">
+        </div>
+        <div class="field">
+          <label for="approve-email">E-mail do Destinatário (para envio por e-mail)</label>
+          <input type="email" id="approve-email" name="recipient_email" inputmode="email" autocorrect="off" autocapitalize="none" spellcheck="false">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="approve-subject">Assunto do E-mail / Título da Proposta <span aria-hidden="true">*</span></label>
+        <input type="text" id="approve-subject" name="email_subject" required>
+      </div>
+
+      <div class="field">
+        <label for="approve-body">Carta de Apresentação / Proposta Comercial Personalizada <span aria-hidden="true">*</span></label>
+        <textarea id="approve-body" name="cover_letter_or_proposal" rows="8" required></textarea>
+      </div>
+
+      <div class="dialog-actions">
+        <button type="button" id="btn-cancel-approve" class="btn btn-secondary">Cancelar</button>
+        <button type="submit" id="btn-confirm-approve" class="btn btn-primary" autofocus>
+          Aprovar e Executar Envio Agora
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- MODAL NATIVO DE CONFIGURAÇÕES (Gemini API Key & SMTP) -->
+  <dialog id="dialog-settings" closedby="any" aria-labelledby="dialog-settings-title">
+    <div class="dialog-header">
+      <h2 id="dialog-settings-title">Configurações de IA (Gemini) &amp; Automação de E-mail</h2>
+      <form method="dialog">
+        <button type="submit" value="cancel" class="btn-icon" aria-label="Fechar configurações">✕</button>
+      </form>
+    </div>
+
+    <form id="form-settings" method="POST" class="dialog-body">
+      <div class="field">
+        <label for="set-gemini-key">Google Gemini API Key</label>
+        <input
+          type="password"
+          id="set-gemini-key"
+          name="gemini_api_key"
+          autocomplete="off"
+          placeholder="Cole sua chave AIzaSy... (deixe em branco para manter a atual)"
+        >
+        <span id="set-key-hint" class="field-hint">Obtenha gratuitamente no Google AI Studio.</span>
+      </div>
+
+      <fieldset class="inline-fieldset">
+        <legend>Modelo Gemini Preferido</legend>
+        <div class="checkbox-group">
+          <div class="check-item">
+            <input type="radio" id="model-flash" name="gemini_model" value="gemini-3.8-flash" checked>
+            <label for="model-flash">gemini-3.8-flash (Rápido, Multimodal + Google Search)</label>
+          </div>
+          <div class="check-item">
+            <input type="radio" id="model-argon" name="gemini_model" value="gemini-4-argon">
+            <label for="model-argon">gemini-4-argon (Raciocínio Profundo Avançado)</label>
+          </div>
+        </div>
+      </fieldset>
+
+      <div class="search-grid">
+        <div class="field">
+          <label for="set-smtp-host">Servidor SMTP</label>
+          <input type="text" id="set-smtp-host" name="smtp_host" value="smtp.gmail.com" autocorrect="off" autocapitalize="none">
+        </div>
+        <div class="field">
+          <label for="set-smtp-port">Porta SMTP</label>
+          <input type="text" id="set-smtp-port" name="smtp_port" inputmode="numeric" value="587">
+        </div>
+      </div>
+
+      <div class="search-grid">
+        <div class="field">
+          <label for="set-smtp-user">Seu E-mail de Envio (SMTP)</label>
+          <input type="email" id="set-smtp-user" name="smtp_user" inputmode="email" autocomplete="email" autocorrect="off" autocapitalize="none">
+        </div>
+        <div class="field">
+          <label for="set-smtp-pass">Senha de App do E-mail</label>
+          <input type="password" id="set-smtp-pass" name="smtp_password" autocomplete="current-password" placeholder="Senha de App (16 caracteres)">
+        </div>
+      </div>
+
+      <div class="dialog-actions">
+        <button type="button" id="btn-cancel-settings" class="btn btn-secondary">Fechar</button>
+        <button type="submit" class="btn btn-primary">Salvar Configurações</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>

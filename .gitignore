@@ -1,0 +1,22 @@
+# Ambientes virtuais e cache Python
+.venv/
+venv/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Variáveis de ambiente e segredos
+.env
+
+# Banco de dados local e arquivos gerados pelo usuário
+data/*.db
+data/*.db-journal
+data/resumes/*.pdf
+data/uploads/*
+
+# IDEs e Sistema Operacional
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
